@@ -1,0 +1,1047 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Settlement Breakdown Tool</title>
+
+  <style>
+    :root{
+      --bg:#ffffff;
+      --text:#0f172a;
+      --muted:#475569;
+      --line:rgba(2,6,23,.10);
+
+      /* ✅ Purple theme */
+      --purple:#6d28d9;
+      --purpleSoft:#a78bfa;
+
+      --ok:#16a34a;
+      --warn:#d97706;
+      --bad:#dc2626;
+
+      --shadow:0 12px 30px rgb(97, 29, 138);
+      --radius:18px;
+      --mono:ui-monospace, Menlo, Consolas, monospace;
+      --sans:system-ui, Segoe UI, Roboto, Arial, sans-serif;
+    }
+
+    *{box-sizing:border-box}
+
+    body{
+      margin:0;
+      font-family:var(--sans);
+      background:
+        radial-gradient(1100px 700px at 20% 10%, rgba(109,40,217,.14), transparent 55%),
+        radial-gradient(900px 650px at 80% 20%, rgba(167,139,250,.18), transparent 60%),
+        var(--bg);
+      min-height:100vh;
+      display:flex;
+      justify-content:center;
+      padding:28px;
+      color:var(--text);
+    }
+
+    .wrap{width:min(1100px,100%)}
+
+    header{
+      display:flex;
+      justify-content:space-between;
+      gap:14px;
+      margin-bottom:16px;
+      align-items:flex-end;
+    }
+
+    h1{margin:0;font-size:26px}
+    .today{
+      font-family:var(--mono);
+      font-size:13px;
+      padding:10px 12px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:white;
+      box-shadow:var(--shadow);
+      white-space:nowrap;
+    }
+
+    .ver{
+      margin-left:10px;
+      font-size:12px;
+      font-family: var(--mono);
+      color: rgba(15,23,42,.45);
+      letter-spacing:.6px;
+      text-transform: uppercase;
+      padding:4px 8px;
+      border-radius:999px;
+      border:1px solid rgba(2,6,23,.10);
+      background: rgba(255,255,255,.55);
+      backdrop-filter: blur(6px);
+      vertical-align: middle;
+    }
+
+    .card{
+      background:rgba(255,255,255,.9);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      border:1px solid var(--line);
+      overflow:hidden;
+    }
+
+    .top{
+      padding:18px;
+      display:grid;
+      grid-template-columns:1.2fr .8fr;
+      gap:14px;
+      border-bottom:1px solid var(--line);
+    }
+
+    .box{
+      border:1px dashed rgba(109,40,217,.40);
+      border-radius:16px;
+      padding:16px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      background:rgba(255,255,255,.8);
+    }
+
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+
+    input, select{
+      padding:12px;
+      border-radius:12px;
+      border:1px solid var(--line);
+      font-family:var(--mono);
+      font-size:14px;
+      background:white;
+      min-width:220px;
+    }
+
+    select{min-width:120px}
+
+    .btn{
+      padding:12px 14px;
+      border-radius:12px;
+      border:1px solid rgba(109,40,217,.35);
+      background:linear-gradient(180deg, rgba(109,40,217,.14), rgba(109,40,217,.06));
+      font-weight:800;
+      cursor:pointer;
+    }
+
+    .divider{height:1px;background:rgba(0,0,0,.08);border-radius:999px;margin:4px 0}
+
+    .status{
+      display:none;
+      padding:12px;
+      border-radius:14px;
+      font-family:var(--mono);
+      font-size:13px;
+      border:1px solid;
+      background:white;
+    }
+    .status.bad{border-color:var(--bad); color:#7f1d1d;}
+    .status.ok{border-color:var(--ok); color:#065f46;}
+    .status.warn{border-color:var(--warn); color:#92400e;}
+
+    .results{padding:18px;display:grid;gap:12px}
+
+    pre{
+      margin:0;
+      padding:14px;
+      border-radius:16px;
+      border:1px solid var(--line);
+      background:white;
+      font-family:var(--mono);
+      font-size:13px;
+      white-space:pre-wrap;
+      line-height:1.35;
+    }
+
+    pre.customer{
+      color:var(--purple);
+      border-color:rgba(109,40,217,.30);
+    }
+
+    @media(max-width:900px){
+      .top{grid-template-columns:1fr}
+      .today{white-space:normal}
+    }
+
+    .footer{
+      margin-top: 22px;
+      padding: 14px 10px;
+      text-align: center;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: rgba(109,40,217,.90);
+      border-top: 1px solid rgba(109,40,217,.25);
+      background: linear-gradient(
+        to right,
+        rgba(109,40,217,.06),
+        rgba(167,139,250,.12),
+        rgba(109,40,217,.06)
+      );
+      border-radius: 0 0 var(--radius) var(--radius);
+    }
+
+    /* ---------- EDIT MODAL + CALENDAR ---------- */
+    .blockWrap{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+
+    .blockTopBar{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:flex-end;
+    }
+
+    .btnSmall{
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid rgba(109,40,217,.35);
+      background:linear-gradient(180deg, rgba(109,40,217,.12), rgba(109,40,217,.05));
+      font-weight:800;
+      cursor:pointer;
+      font-family: var(--mono);
+      font-size:12px;
+    }
+
+    .modalOverlay{
+      position:fixed;
+      inset:0;
+      background:rgba(2,6,23,.45);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:18px;
+      z-index:9999;
+    }
+
+    .modal{
+      width:min(920px, 100%);
+      background:rgba(255,255,255,.95);
+      border:1px solid var(--line);
+      border-radius:18px;
+      box-shadow:0 24px 70px rgba(2,6,23,.25);
+      overflow:hidden;
+    }
+
+    .modalHeader{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:14px 16px;
+      border-bottom:1px solid var(--line);
+      background:linear-gradient(
+        to right,
+        rgba(109,40,217,.06),
+        rgba(167,139,250,.14),
+        rgba(109,40,217,.06)
+      );
+    }
+
+    .modalHeader h2{
+      margin:0;
+      font-size:15px;
+      font-family: var(--mono);
+      color:#111827;
+    }
+
+    .modalBody{
+      padding:16px;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:14px;
+    }
+
+    @media (max-width: 900px){
+      .modalBody{ grid-template-columns:1fr; }
+    }
+
+    .panel{
+      border:1px solid var(--line);
+      border-radius:16px;
+      padding:14px;
+      background:white;
+    }
+
+    .panelTitle{
+      margin:0 0 10px;
+      font-family: var(--mono);
+      font-size:12px;
+      letter-spacing:.4px;
+      color:var(--muted);
+      text-transform:uppercase;
+    }
+
+    .fieldRow{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:flex-end;
+    }
+
+    .fieldRow input{
+      min-width: 220px;
+    }
+
+    .legend{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      font-family: var(--mono);
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .legend span{
+      display:flex;
+      align-items:center;
+      gap:6px;
+    }
+
+    .dot{
+      width:10px; height:10px; border-radius:999px;
+      display:inline-block;
+    }
+    .dot.g{ background: rgba(22,163,74,.85); }
+    .dot.y{ background: rgba(217,119,6,.85); }
+    .dot.r{ background: rgba(220,38,38,.85); }
+
+    .calendarGrid{
+      display:grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap:8px;
+    }
+
+    .dow{
+      font-family: var(--mono);
+      font-size:11px;
+      color:var(--muted);
+      text-align:center;
+    }
+
+    .dayBtn{
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:10px 0;
+      background:white;
+      cursor:pointer;
+      font-family: var(--mono);
+      font-size:12px;
+      text-align:center;
+      user-select:none;
+    }
+
+    .dayBtn.green{ border-color: rgba(22,163,74,.35); background: rgba(22,163,74,.10); }
+    .dayBtn.yellow{ border-color: rgba(217,119,6,.35); background: rgba(217,119,6,.10); }
+    .dayBtn.red{ border-color: rgba(220,38,38,.35); background: rgba(220,38,38,.10); }
+
+    .dayBtn.disabled{
+      opacity:.45;
+      cursor:not-allowed;
+    }
+
+    .dayBtn.selected{
+      outline: 2px solid rgba(109,40,217,.55);
+    }
+
+    .modalFooter{
+      padding:14px 16px;
+      border-top:1px solid var(--line);
+      display:flex;
+      gap:10px;
+      justify-content:flex-end;
+      flex-wrap:wrap;
+      background:rgba(255,255,255,.92);
+    }
+
+    .outputBox{
+      border:1px solid var(--line);
+      border-radius:16px;
+      padding:12px;
+      background:white;
+    }
+
+    .outputBox pre{
+      border:none;
+      padding:0;
+      margin:0;
+      background:transparent;
+    }
+
+    /* ---------- CLEAR ALL BUTTON ---------- */
+    .btnClear{
+      padding:10px 14px;
+      border-radius:12px;
+      border:1px solid rgba(220,38,38,.35);
+      background:linear-gradient(180deg, rgba(220,38,38,.12), rgba(220,38,38,.05));
+      font-weight:800;
+      font-family: var(--mono);
+      font-size:12px;
+      cursor:pointer;
+      color:#7f1d1d;
+      transition: all .15s ease;
+    }
+
+    .btnClear:hover{
+      background:linear-gradient(180deg, rgba(220,38,38,.18), rgba(220,38,38,.08));
+      transform: translateY(-1px);
+    }
+
+    /* ✅ Alertas debajo del settlement corregido (panel derecho) */
+    .inlineAlerts{
+      margin-top:10px;
+      display:grid;
+      gap:10px;
+    }
+    .inlineAlerts .status{
+      display:block;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+
+    <!-- HEADER -->
+    <header>
+      <div>
+        <h1>
+          Settlement Breakdown CC/Byte Tool
+          <span class="ver">1.0</span>
+        </h1>
+      </div>
+
+      <div style="display:flex; gap:10px; align-items:center;">
+        <div class="today" id="todayBox"></div>
+        <button class="btnClear" id="clearAllBtn">🧹 Clear All</button>
+      </div>
+    </header>
+
+    <!-- MAIN CARD -->
+    <section class="card">
+      <div class="top">
+        <div class="box">
+          <strong>Current Balance</strong>
+          <div class="row">
+            <div>
+              <input id="balance" />
+            </div>
+
+            <div>
+              <label>Currency</label><br/>
+              <select id="currency">
+                <option value="USD">USD</option>
+              </select>
+            </div>
+
+            <button class="btn" id="goBtn">Enter</button>
+          </div>
+
+          <div class="divider"></div>
+
+          <strong>Customer Offer</strong>
+          <div class="row">
+            <div>
+              <input id="customerOffer" />
+            </div>
+            <button class="btn" id="offerBtn">Offer</button>
+          </div>
+
+          <div class="divider"></div>
+
+          <strong>No. of Installments</strong>
+          <div class="row">
+            <div>
+              <select id="installments">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6" selected>6</option>
+                <option value="7">7</option>
+                <option value="8">8</option>
+                <option value="9">9</option>
+                <option value="10">10</option>
+                <option value="11">11</option>
+                <option value="12">12</option>
+              </select>
+            </div>
+
+            <button class="btn" id="refreshBtn">Refresh</button>
+          </div>
+
+          <div class="status" id="statusBox"></div>
+        </div>
+      </div>
+
+      <div class="results" id="results"></div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+      <span>© <span id="year"></span> ALAN HERNANDEZ · All rights reserved</span>
+    </footer>
+
+    <!-- EDIT SETTLEMENT MODAL -->
+    <div class="modalOverlay" id="editOverlay" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true">
+        <div class="modalHeader">
+          <h2 id="editTitle">EDIT SETTLEMENT</h2>
+          <button class="btnSmall" id="closeEditBtn">✖ Close</button>
+        </div>
+
+        <div class="modalBody">
+          <div class="panel">
+            <p class="panelTitle">Commit payment details</p>
+
+            <div class="fieldRow">
+              <div>
+                <label>First payment amount</label><br/>
+                <input id="firstPayAmount" placeholder="Ej: 250.00" />
+              </div>
+              <div>
+                <label>First payment date</label><br/>
+                <input id="firstPayDate" readonly placeholder="Click a date below" />
+              </div>
+            </div>
+
+            <div style="height:10px"></div>
+            <div class="legend">
+              <span><i class="dot g"></i> Next 8 days</span>
+              <span><i class="dot y"></i> Day 9–11</span>
+              <span><i class="dot r"></i> Not allowed</span>
+            </div>
+
+            <div style="height:10px"></div>
+
+            <div class="calendarHead" style="font-family:var(--mono); font-size:13px; color:#111827; margin-bottom:10px;">
+              <div id="calMonthLabel"></div>
+            </div>
+
+            <div class="calendarGrid" id="calGrid"></div>
+          </div>
+
+          <div class="panel">
+            <p class="panelTitle">Corrected breakdown to copy/paste</p>
+            <div class="outputBox">
+              <pre id="editedOutput">(Complete the fields and click "Generate corrected breakdown")</pre>
+
+              <!-- ✅ ALERTAS debajo del settlement corregido -->
+              <div class="inlineAlerts" id="editedAlerts"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modalFooter">
+          <button class="btnSmall" id="genCorrectedBtn">✅ Generate corrected breakdown</button>
+          <button class="btnSmall" id="copyCorrectedBtn">📋 Copy corrected</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const today = new Date();
+
+    const balanceEl = document.getElementById('balance');
+    const offerEl = document.getElementById('customerOffer');
+    const instEl = document.getElementById('installments');
+    const results = document.getElementById('results');
+    const statusBox = document.getElementById('statusBox');
+    const currencyEl = document.getElementById('currency');
+
+    // Footer year
+    const yearEl = document.getElementById('year');
+    if(yearEl) yearEl.textContent = new Date().getFullYear();
+
+    let baseBalanceCents = 0;
+
+    function pad2(n){ return String(n).padStart(2,'0'); }
+    function fmtDate(d){ return `${pad2(d.getMonth()+1)}/${pad2(d.getDate())}/${d.getFullYear()}`; }
+
+    const todayBox = document.getElementById('todayBox');
+    if(todayBox) todayBox.textContent = `Today: ${fmtDate(today)}`;
+
+    function parseCents(v){
+      const cleaned = String(v || '').trim()
+        .replace(/\s/g,'')
+        .replace(/[$,]/g,'')
+        .replace(/[^\d.]/g,'');
+      if(!cleaned) return 0;
+      const n = Number(cleaned);
+      if(!Number.isFinite(n) || n <= 0) return 0;
+      return Math.round(n * 100);
+    }
+
+    function money(cents){
+      return new Intl.NumberFormat('en-US', { style:'currency', currency: currencyEl.value }).format(cents/100);
+    }
+
+    function showStatus(type, msg){
+      statusBox.className = `status ${type}`;
+      statusBox.style.display = 'block';
+      statusBox.textContent = msg;
+    }
+
+    function hideStatus(){
+      statusBox.style.display = 'none';
+    }
+
+    // ✅ Inline alerts under edited settlement output
+    const editedAlerts = document.getElementById('editedAlerts');
+
+    function clearEditedAlerts(){
+      if(editedAlerts) editedAlerts.innerHTML = '';
+    }
+
+    function pushEditedAlert(type, msg){
+      if(!editedAlerts) return;
+      const div = document.createElement('div');
+      div.className = `status ${type}`;
+      div.textContent = msg;
+      editedAlerts.appendChild(div);
+    }
+
+    // WARNING: solo si installments > 6
+    function checkInstallmentsWarning(){
+      const n = Number(instEl.value);
+      if(n > 6){
+        showStatus('bad', `🚨 Approval REQUIRED: ${n} installments selected. Contact sup/lead.`);
+        return true;
+      }
+      return false;
+    }
+
+    // Divide en pagos iguales y reparte centavos
+    function buildInstallments(totalCents, n){
+      const base = Math.floor(totalCents / n);
+      let rem = totalCents - base * n;
+      const pays = [];
+      for(let i=0;i<n;i++){
+        const extra = rem > 0 ? 1 : 0;
+        pays.push(base + extra);
+        rem -= extra;
+      }
+      return pays;
+    }
+
+    function buildInstallmentsWithFirst(totalCents, n, firstCents){
+      const safeFirst = Math.max(0, Math.min(firstCents, totalCents));
+      const remaining = totalCents - safeFirst;
+      const remainingN = Math.max(0, n - 1);
+      const restPays = remainingN > 0 ? buildInstallments(remaining, remainingN) : [];
+      return [safeFirst, ...restPays];
+    }
+
+    function addMonthsKeepDay(date, monthsToAdd){
+      const y = date.getFullYear();
+      const m = date.getMonth();
+      const day = date.getDate();
+      const targetMonth = m + monthsToAdd;
+      const newY = y + Math.floor(targetMonth / 12);
+      const newM = ((targetMonth % 12) + 12) % 12;
+      const dim = new Date(newY, newM + 1, 0).getDate();
+      const newD = Math.min(day, dim);
+      return new Date(newY, newM, newD);
+    }
+
+    // ---------- BUILD TEXT ----------
+    function buildText(title, balanceCents, pctString, settlementCents, installments, startDate, pays){
+      let t = `${title}
+Current Balance: ${money(balanceCents)}
+Settlement percentage: ${pctString}%
+Settlement amount: ${money(settlementCents)}
+No. of Installment: ${installments}
+Installment dates:
+`;
+      for(let i=0;i<installments;i++){
+        const due = addMonthsKeepDay(startDate, i);
+        t += `${fmtDate(due)} ${money(pays[i] ?? 0)}\n`;
+      }
+      return t.trim();
+    }
+
+    // ---------- BUILD BLOCKS (with Edit button) ----------
+    function makeBlock(title, balanceCents, pctString, settlementCents, installments, isCustomer){
+      const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const pays = buildInstallments(settlementCents, installments);
+
+      const text = buildText(title, balanceCents, pctString, settlementCents, installments, start, pays);
+
+      const wrap = document.createElement('div');
+      wrap.className = 'blockWrap';
+
+      const topbar = document.createElement('div');
+      topbar.className = 'blockTopBar';
+
+      const editBtn = document.createElement('button');
+      editBtn.className = 'btnSmall';
+      editBtn.textContent = '✏️ Edit';
+      editBtn.addEventListener('click', () => openEditModal({
+        title,
+        balanceCents,
+        pctString,
+        settlementCents,
+        installments,
+        isCustomer
+      }));
+
+      topbar.appendChild(editBtn);
+
+      const pre = document.createElement('pre');
+      if(isCustomer){
+        pre.className = 'customer';
+        pre.id = 'customerOfferBlock';
+      }
+      pre.textContent = text;
+
+      wrap.appendChild(topbar);
+      wrap.appendChild(pre);
+
+      return wrap;
+    }
+
+    function removeCustomerOfferBlock(){
+      const existing = document.getElementById('customerOfferBlock');
+      if(existing){
+        const wrap = existing.closest('.blockWrap');
+        if(wrap) wrap.remove();
+        else existing.remove();
+      }
+    }
+
+    // ---------- CUSTOMER OFFER UPSERT ----------
+    function upsertCustomerOfferBlock(){
+      const offerCents = parseCents(offerEl.value);
+      if(!offerCents){
+        removeCustomerOfferBlock();
+        return;
+      }
+
+      const installments = Number(instEl.value);
+      const needsApproval = checkInstallmentsWarning(); // solo >6
+
+      let pctString = '0.00';
+      let balanceForPrint = 0;
+
+      if(baseBalanceCents){
+        balanceForPrint = baseBalanceCents;
+        pctString = ((offerCents / baseBalanceCents) * 100).toFixed(2);
+
+        if(!needsApproval){
+          const pct = Number(pctString);
+          if(pct < 20){
+            showStatus('bad', `🚨 Offer ${pctString}% below guideline. Sup/lead approval required.`);
+          } else {
+            showStatus('ok', `✅ Free to go (${pctString}%).`);
+          }
+        }
+      } else {
+        if(!needsApproval){
+          showStatus('warn', 'ℹ️ PARA VALIDAR GUIDELINE (20%), PRIMERO INGRESA CURRENT BALANCE Y PRESIONA ENTER.');
+        }
+        balanceForPrint = 0;
+        pctString = '0.00';
+      }
+
+      const header = `***SETTLEMENT BREAKDOWN***`;
+
+      // ✅ Customer offer block stays purple (class customer) but WITHOUT printing "***CUSTOMER OFFER***"
+      const newWrap = makeBlock(header, balanceForPrint, pctString, offerCents, installments, true);
+
+      const existingPre = document.getElementById('customerOfferBlock');
+      if(existingPre){
+        const existingWrap = existingPre.closest('.blockWrap');
+        if(existingWrap) existingWrap.replaceWith(newWrap);
+        else existingPre.replaceWith(newWrap);
+      } else {
+        results.prepend(newWrap);
+      }
+    }
+
+    // ---------- GENERATE MAIN OFFERS ----------
+    function generatePercentOffers(){
+      results.innerHTML = '';
+      baseBalanceCents = parseCents(balanceEl.value);
+      if(!baseBalanceCents) return;
+
+      const installments = Number(instEl.value);
+      const needsApproval = checkInstallmentsWarning();
+      if(!needsApproval) hideStatus();
+
+      results.appendChild(
+        makeBlock('***BREAKDOWN***', baseBalanceCents, '100.00', baseBalanceCents, installments, false)
+      );
+
+      for(let p=90; p>=20; p-=10){
+        const settlement = Math.round(baseBalanceCents * (p/100));
+        results.appendChild(
+          makeBlock('***SETTLEMENT BREAKDOWN***', baseBalanceCents, p.toFixed(2), settlement, installments, false)
+        );
+      }
+
+      upsertCustomerOfferBlock();
+    }
+
+    function addCustomerOffer(){
+      upsertCustomerOfferBlock();
+    }
+
+    document.getElementById('goBtn').addEventListener('click', generatePercentOffers);
+    document.getElementById('refreshBtn').addEventListener('click', generatePercentOffers);
+    document.getElementById('offerBtn').addEventListener('click', addCustomerOffer);
+
+    instEl.addEventListener('change', () => {
+      const bal = parseCents(balanceEl.value);
+      if(bal > 0){
+        generatePercentOffers();
+      } else {
+        const needs = checkInstallmentsWarning();
+        if(!needs) hideStatus();
+        upsertCustomerOfferBlock();
+      }
+    });
+
+    // ---------- EDIT MODAL ----------
+    const editOverlay = document.getElementById('editOverlay');
+    const closeEditBtn = document.getElementById('closeEditBtn');
+    const genCorrectedBtn = document.getElementById('genCorrectedBtn');
+    const copyCorrectedBtn = document.getElementById('copyCorrectedBtn');
+    const editedOutput = document.getElementById('editedOutput');
+    const editTitle = document.getElementById('editTitle');
+
+    const firstPayAmountEl = document.getElementById('firstPayAmount');
+    const firstPayDateEl = document.getElementById('firstPayDate');
+    const calGrid = document.getElementById('calGrid');
+    const calMonthLabel = document.getElementById('calMonthLabel');
+
+    let editing = null;
+    let selectedDate = null;
+
+    function openEditModal(meta){
+      editing = meta;
+
+      firstPayAmountEl.value = '';
+      firstPayDateEl.value = '';
+      selectedDate = null;
+
+      editTitle.textContent = `EDIT: ${meta.title.replace(/\*/g,'').trim()} | ${money(meta.settlementCents)} | ${meta.installments} installments`;
+
+      renderCalendar30();
+
+      editedOutput.textContent = '(Complete the fields and click "Generate corrected breakdown")';
+      clearEditedAlerts();
+
+      editOverlay.style.display = 'flex';
+      editOverlay.setAttribute('aria-hidden','false');
+    }
+
+    function closeEditModal(){
+      editOverlay.style.display = 'none';
+      editOverlay.setAttribute('aria-hidden','true');
+      editing = null;
+      selectedDate = null;
+    }
+
+    closeEditBtn.addEventListener('click', closeEditModal);
+    editOverlay.addEventListener('click', (e) => {
+      if(e.target === editOverlay) closeEditModal();
+    });
+
+    function dateDiffInDays(a, b){
+      const da = new Date(a.getFullYear(), a.getMonth(), a.getDate());
+      const db = new Date(b.getFullYear(), b.getMonth(), b.getDate());
+      return Math.round((db - da) / 86400000);
+    }
+
+    // ✅ 30-day rolling calendar across months
+    function renderCalendar30(){
+      calGrid.innerHTML = '';
+
+      const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const end = new Date(start);
+      end.setDate(end.getDate() + 29);
+
+      calMonthLabel.textContent = `${fmtDate(start)}  →  ${fmtDate(end)}  (Next 30 days)`;
+
+      const dows = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      for(const d of dows){
+        const el = document.createElement('div');
+        el.className = 'dow';
+        el.textContent = d;
+        calGrid.appendChild(el);
+      }
+
+      const startDow = start.getDay();
+      for(let i=0;i<startDow;i++){
+        calGrid.appendChild(document.createElement('div'));
+      }
+
+      for(let i=0;i<30;i++){
+        const date = new Date(start);
+        date.setDate(start.getDate() + i);
+
+        const btn = document.createElement('div');
+        btn.className = 'dayBtn';
+
+        const dayNum = date.getDate();
+        const monthShort = new Intl.DateTimeFormat('en-US', { month:'short' }).format(date);
+        const isNewMonth = (i === 0) || (dayNum === 1);
+        btn.textContent = isNewMonth ? `${monthShort} ${dayNum}` : `${dayNum}`;
+
+        // 0..7  green OK (next 8 days incl. today)
+        // 8..10 yellow OK (approval required)  -> days 9–11
+        // 11..29 red NOT allowed              -> more than 11 days from today
+        if(i <= 7){
+          btn.classList.add('green');
+        } else if(i <= 10){
+          btn.classList.add('yellow');
+          btn.title = 'Approval required (9–11 days from today).';
+        } else {
+          btn.classList.add('red','disabled');
+          btn.title = 'Not allowed (more than 11 days from today).';
+        }
+
+        if(!btn.classList.contains('disabled')){
+          btn.addEventListener('click', () => {
+            calGrid.querySelectorAll('.dayBtn.selected').forEach(x => x.classList.remove('selected'));
+            btn.classList.add('selected');
+
+            selectedDate = date;
+            firstPayDateEl.value = fmtDate(date);
+
+            if(i >= 8 && i <= 10){
+              showStatus('bad', `🟡 Approval REQUIRED: First payment date is ${i+1} days from today. Contact sup/lead.`);
+            } else {
+              const instWarn = Number(instEl.value) > 6;
+              if(!instWarn) hideStatus();
+            }
+          });
+        }
+
+        calGrid.appendChild(btn);
+      }
+    }
+
+    // ✅ Generates corrected text AND prints alerts under edited settlement
+    function generateCorrectedText(){
+      clearEditedAlerts();
+
+      if(!editing){
+        editedOutput.textContent = 'No settlement selected.';
+        return;
+      }
+
+      const firstCents = parseCents(firstPayAmountEl.value);
+      if(!firstCents){
+        editedOutput.textContent = 'Please enter a valid First payment amount (e.g., 250.00).';
+        return;
+      }
+
+      if(!selectedDate){
+        editedOutput.textContent = 'Please select a First payment date from the calendar.';
+        return;
+      }
+
+      const diff = dateDiffInDays(today, selectedDate);
+
+      // Not allowed >11 days (diff >= 11)
+      if(diff >= 11){
+        editedOutput.textContent = 'First payment date not allowed (more than 11 days from today).';
+        pushEditedAlert('bad', `🔴 Not allowed: First payment date is ${diff+1} days from today.`);
+        return;
+      }
+
+      const n = Number(editing.installments);
+      const total = Number(editing.settlementCents);
+
+      if(firstCents > total){
+        editedOutput.textContent = 'First payment amount cannot be greater than the settlement amount.';
+        pushEditedAlert('bad', '🚨 First payment amount exceeds settlement amount.');
+        return;
+      }
+
+      const pays = buildInstallmentsWithFirst(total, n, firstCents);
+      const startDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+
+      let text = buildText(editing.title, editing.balanceCents, editing.pctString, editing.settlementCents, n, startDate, pays);
+
+      editedOutput.textContent = text;
+
+      // Alerts under edited output (panel right)
+      if(diff === 0){
+        pushEditedAlert('ok', '✅ Payment on the spot captured (first payment is today).');
+      } else {
+        pushEditedAlert('warn', `ℹ️ Commit payment scheduled for ${fmtDate(selectedDate)} (${diff+1} days from today).`);
+      }
+
+      if(diff >= 8 && diff <= 10){
+        pushEditedAlert('bad', `🟡 Approval REQUIRED: First payment date is ${diff+1} days from today. Contact sup/lead.`);
+      } else {
+        pushEditedAlert('ok', '✅ Date guideline OK (within next 8 days).');
+      }
+
+      if(n > 6){
+        pushEditedAlert('bad', `🚨 Approval REQUIRED: ${n} installments selected. Contact sup/lead.`);
+      } else {
+        pushEditedAlert('ok', `✅ Installments OK (${n}).`);
+      }
+    }
+
+    genCorrectedBtn.addEventListener('click', generateCorrectedText);
+
+    copyCorrectedBtn.addEventListener('click', async () => {
+      const text = editedOutput.textContent || '';
+      if(!text.trim() || text.includes('Please ') || text.includes('(Complete')){
+        showStatus('warn', 'ℹ️ Generate the corrected breakdown first, then copy.');
+        return;
+      }
+      try{
+        await navigator.clipboard.writeText(text);
+        showStatus('ok', '✅ Corrected breakdown copied to clipboard.');
+      }catch(e){
+        showStatus('warn', 'ℹ️ Could not auto-copy. Please copy manually from the box.');
+      }
+    });
+
+    // ---------- CLEAR ALL ----------
+    const clearAllBtn = document.getElementById('clearAllBtn');
+
+    function clearAll(){
+      balanceEl.value = '';
+      offerEl.value = '';
+      instEl.value = '6';
+
+      baseBalanceCents = 0;
+      selectedDate = null;
+      editing = null;
+
+      results.innerHTML = '';
+      hideStatus();
+
+      editOverlay.style.display = 'none';
+      editOverlay.setAttribute('aria-hidden','true');
+
+      firstPayAmountEl.value = '';
+      firstPayDateEl.value = '';
+      editedOutput.textContent = '(Complete the fields and click "Generate corrected breakdown")';
+
+      calGrid.innerHTML = '';
+      calMonthLabel.textContent = '';
+      clearEditedAlerts();
+
+      showStatus('ok', '🧹 All data cleared. Ready for a new settlement.');
+    }
+
+    clearAllBtn.addEventListener('click', clearAll);
+  </script>
+</body>
+</html>
